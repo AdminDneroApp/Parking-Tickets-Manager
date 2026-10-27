@@ -26,13 +26,81 @@ export interface MonthSummary {
   byDay: DayTotal[]
 }
 
+export interface CollaboratorMonthRow {
+  email: string
+  name: string
+  hours: number
+  total: number
+  ticketsByDate: Record<string, TicketRecord[]>
+}
+
+export interface CollaboratorWeek {
+  number: number
+  dates: string[]
+}
+
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-/** YYYY-MM values present in the data, newest first. */
-export function availableMonths(records: TicketRecord[], current: string): string[] {
-  const months = new Set(records.map((r) => r.date.slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)))
-  months.add(current)
-  return [...months].sort().reverse()
+function displayName(email: string) {
+  return (email.split('@')[0] ?? '')
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toLocaleUpperCase('es-SV') + part.slice(1))
+    .join(' ')
+}
+
+/** Daily ticket details grouped into one row per collaborator for the monthly export. */
+export function summarizeCollaborators(records: TicketRecord[]) {
+  const collaborators = new Map<string, CollaboratorMonthRow>()
+  const dates = [...new Set(records.map((record) => record.date))].sort()
+
+  for (const record of records) {
+    const row = collaborators.get(record.email) ?? {
+      email: record.email,
+      name: displayName(record.email),
+      hours: 0,
+      total: 0,
+      ticketsByDate: {},
+    }
+    row.hours += record.hours
+    row.total += record.total
+    const tickets = row.ticketsByDate[record.date] ?? []
+    tickets.push(record)
+    row.ticketsByDate[record.date] = tickets
+    collaborators.set(record.email, row)
+  }
+
+  return {
+    dates,
+    collaborators: [...collaborators.values()]
+      .map((row) => ({ ...row, total: round2(row.total) }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es-SV') || a.email.localeCompare(b.email)),
+  }
+}
+
+/** Monday-to-Saturday ranges that intersect the selected calendar month. */
+export function weeksInMonth(month: string): CollaboratorWeek[] {
+  const [year, monthNumber] = month.split('-').map(Number)
+  const firstDay = new Date(Date.UTC(year, monthNumber - 1, 1))
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0))
+  const mondayOffset = (firstDay.getUTCDay() + 6) % 7
+  const weekStart = new Date(firstDay)
+  weekStart.setUTCDate(firstDay.getUTCDate() - mondayOffset)
+
+  const weeks: CollaboratorWeek[] = []
+  while (weekStart <= lastDay) {
+    const dates = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(weekStart)
+      date.setUTCDate(weekStart.getUTCDate() + index)
+      return date.toISOString().slice(0, 10)
+    })
+    if (dates[5] >= firstDay.toISOString().slice(0, 10)) {
+      weeks.push({ number: weeks.length + 1, dates })
+    }
+    weekStart.setUTCDate(weekStart.getUTCDate() + 7)
+  }
+
+  return weeks
 }
 
 export function summarize(records: TicketRecord[], month: string): MonthSummary {
