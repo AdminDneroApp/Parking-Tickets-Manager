@@ -1,12 +1,12 @@
-import Link from 'next/link'
 import { AlertTriangle, ExternalLink, LogOut } from 'lucide-react'
 import { auth, signOut } from '@/auth'
 import { getGoogleConfig, readTickets } from '@/shared/lib/google'
 import { todayIso } from '@/shared/lib/dates'
 import { Button } from '@/shared/ui/Button'
 import { cn } from '@/shared/lib/utils'
-import { availableMonths, summarize } from '@/features/dashboard/summary'
+import { summarize, weeksInMonth } from '@/features/dashboard/summary'
 import { CollaboratorBars, DailyColumns } from '@/features/dashboard/charts'
+import { MonthlyCollaboratorTable } from '@/features/dashboard/MonthlyCollaboratorTable'
 import { formatDate, formatMoney, formatMonth, formatNumber } from '@/shared/lib/format'
 
 export const dynamic = 'force-dynamic'
@@ -29,11 +29,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     }
   }
 
-  const months = availableMonths(records, currentMonth)
   const monthRecords = records
     .filter((r) => r.date.startsWith(month))
     .sort((a, b) => (b.date + b.entryTime).localeCompare(a.date + a.entryTime))
   const summary = summarize(monthRecords, month)
+  const weeks = weeksInMonth(month)
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
@@ -57,21 +57,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </header>
 
-      {/* Month filter */}
-      <nav className="flex gap-2 overflow-x-auto pb-1">
-        {months.map((m) => (
-          <Link
-            key={m}
-            href={`/dashboard?mes=${m}`}
-            className={cn(
-              'shrink-0 rounded-full border px-3 py-1 text-sm capitalize transition-colors',
-              m === month ? 'border-primary bg-primary/15 text-foreground' : 'border-border text-muted-foreground hover:bg-accent',
-            )}
-          >
-            {formatMonth(m)}
-          </Link>
-        ))}
-      </nav>
+      <form action="/dashboard" method="get" className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <label htmlFor="mes" className="block text-xs font-medium text-muted-foreground">
+            Mes y año
+          </label>
+          <input
+            id="mes"
+            name="mes"
+            type="month"
+            defaultValue={month}
+            className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+          />
+        </div>
+        <Button type="submit" variant="outline" className="h-10">
+          Ver resumen
+        </Button>
+      </form>
+
+      <MonthlyCollaboratorTable
+        weeks={weeks}
+        records={records}
+        monthHours={summary.hours}
+        monthTotal={summary.total}
+      />
 
       {loadError && (
         <div role="alert" className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
