@@ -22,3 +22,11 @@ export function formatDate(iso: string) {
 
 /** YYYY-MM → "octubre de 2026" */
 export const formatMonth = (month: string) => monthYear.format(new Date(`${month}-01T00:00:00Z`))
+
+const clock = new Intl.DateTimeFormat(LOCALE, { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
+
+/** HH:MM (24 h) → "8:30 a. m." (unparseable values are shown as-is). */
+export function formatTime(value: string) {
+  const m = /^(\d{2}):(\d{2})$/.exec(value)
+  return m ? clock.format(new Date(Date.UTC(1970, 0, 1, Number(m[1]), Number(m[2])))) : value
+}

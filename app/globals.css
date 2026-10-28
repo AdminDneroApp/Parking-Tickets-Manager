@@ -50,8 +50,15 @@
   outline-offset: 2px;
 }
 
-/* Native date/time pickers: light icons on the dark theme */
-input[type='date'], input[type='time'] { color-scheme: dark; }
+/* Native date pickers: light icons on the dark theme. iOS Safari gives them an
+   intrinsic min-width and centered text, which overflows narrow columns. */
+input[type='date'], input[type='month'] {
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+input::-webkit-date-and-time-value { text-align: left; }
 
 .glass-card {
   background: hsl(var(--card) / 0.8);
