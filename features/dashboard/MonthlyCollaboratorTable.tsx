@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@/shared/ui/Button'
 import { formatMoney } from '@/shared/lib/format'
@@ -44,6 +44,7 @@ export function MonthlyCollaboratorTable({
   const [selectedWeek, setSelectedWeek] = useState(0)
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
   const [copyError, setCopyError] = useState<string | null>(null)
+  const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeWeekIndex = Math.min(selectedWeek, weeks.length - 1)
   const week = weeks[activeWeekIndex]
   const weekRecords = week
@@ -53,6 +54,10 @@ export function MonthlyCollaboratorTable({
   const weekHours = weekRecords.reduce((sum, record) => sum + record.hours, 0)
   const weekTotal = weekRecords.reduce((sum, record) => sum + Math.round(record.total * 100), 0) / 100
 
+  useEffect(() => () => {
+    if (copiedResetTimeout.current !== null) clearTimeout(copiedResetTimeout.current)
+  }, [])
+
   if (!week) return null
 
   async function copyRow(row: (typeof collaborators)[number]) {
@@ -61,13 +66,20 @@ export function MonthlyCollaboratorTable({
         .map((ticket) => formatTicket(date, ticket.entryTime, ticket.exitTime))
         .join(' | '),
     )
-    const values = [row.name, ...dailyValues, `${row.hours} horas (${formatMoney(row.total)})`]
+    const values = [...dailyValues, `${row.hours} horas (${formatMoney(row.total)})`]
 
     try {
       await navigator.clipboard.writeText(values.join('\t'))
       setCopiedEmail(row.email)
       setCopyError(null)
+      if (copiedResetTimeout.current !== null) clearTimeout(copiedResetTimeout.current)
+      copiedResetTimeout.current = setTimeout(() => {
+        setCopiedEmail(null)
+        copiedResetTimeout.current = null
+      }, 1000)
     } catch {
+      if (copiedResetTimeout.current !== null) clearTimeout(copiedResetTimeout.current)
+      copiedResetTimeout.current = null
       setCopiedEmail(null)
       setCopyError('No se pudieron copiar los datos. Revisa los permisos del navegador.')
     }
@@ -79,7 +91,7 @@ export function MonthlyCollaboratorTable({
         <div>
           <h2 className="text-sm font-semibold">Resumen semanal por colaborador</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Semana de {formatShortDate(week.dates[0])} a {formatShortDate(week.dates[5])}. Cada fila se copia en formato tabulado para Google Sheets.
+            Semana de {formatShortDate(week.dates[0])} a {formatShortDate(week.dates[5])}. Los horarios y totales se copian en formato tabulado para Google Sheets.
           </p>
         </div>
         <span className="text-xs text-muted-foreground">
@@ -100,6 +112,8 @@ export function MonthlyCollaboratorTable({
                 setSelectedWeek(index)
                 setCopiedEmail(null)
                 setCopyError(null)
+                if (copiedResetTimeout.current !== null) clearTimeout(copiedResetTimeout.current)
+                copiedResetTimeout.current = null
               }}
             >
               Semana {item.number}
