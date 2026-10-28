@@ -31,9 +31,10 @@ checks the allowlist on every request.
    |---|---|---|---|---|---|---|---|---|---|---|---|---|
    | Registrado | Correo | ID Ticket | Fecha | Hora entrada | Hora salida | Horas calculadas | Horas | Tarifa | Sub-Total | IVA | Total | Foto |
 
-   - *Horas calculadas* comes from entry/exit (fractions round up). *Horas* is the
-     value the collaborator confirmed (editable). They differ when the hours were edited
-     by hand; the dashboard flags those rows.
+   - *Horas calculadas* comes from entry/exit (fractions round up). *Horas* is what
+     gets billed. Hours are no longer editable in the form and the API computes them from
+     the times, so new rows have G = H; older rows edited by hand can differ and the
+     dashboard still flags them.
    - Values are written with `valueInputOption=RAW` (no formula injection). Format
      columns J–L as currency in the Sheet if you like; the app reads unformatted values.
    - Do not reorder columns: `shared/lib/google.ts` reads and writes by position.
@@ -90,6 +91,11 @@ Limits worth knowing:
 - The form is public. Protection is the `@dneroapp.com` email check, server-side
   validation and a honeypot field — it does not prove the submitter owns the email.
   Add Vercel Firewall rate limiting on `/api/tickets` if spam appears.
+
+Testing on a phone in development: open `http://<your LAN IP>:3000`. `allowedDevOrigins`
+in `next.config.ts` allows `192.168.*.*` and `10.*.*.*` (Next 16 blocks other origins
+from dev resources and the page never hydrates). Over plain http the phone camera
+(`<input capture>`) and file upload work, but the desktop webcam needs https or `localhost`.
 
 ## Pricing
 

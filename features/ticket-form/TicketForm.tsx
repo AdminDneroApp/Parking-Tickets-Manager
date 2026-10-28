@@ -1,19 +1,23 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Camera, CheckCircle2, Loader2, RotateCcw } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Camera, CheckCircle2, ImageUp, Loader2 } from 'lucide-react'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Field } from '@/shared/ui/Field'
-import { HOURLY_RATE_CENTS, MAX_HOURS, billableHours, breakdown, formatUsd } from '@/shared/lib/pricing'
+import { cn } from '@/shared/lib/utils'
+import { HOURLY_RATE_CENTS, billableHours, breakdown, formatUsd, parseTime } from '@/shared/lib/pricing'
 import { todayIso } from '@/shared/lib/dates'
 import { type TicketErrors, PHOTO_TYPES, validatePhoto, validateTicket } from '@/shared/lib/validation'
 import { compressImage } from './compress-image'
+import { TimePicker } from './TimePicker'
+import { WebcamDialog, useCameraMode } from './WebcamCapture'
 
 const EMAIL_STORAGE_KEY = 'parking.email'
 
+// text-base on phones: iOS zooms into inputs under 16px
 const inputClass =
-  'h-11 rounded-xl bg-muted/60 px-4 placeholder:text-muted-foreground/60 focus-visible:border-primary/60 focus-visible:ring-primary/20'
+  'h-11 min-w-0 rounded-xl bg-muted/60 px-4 text-base sm:text-sm placeholder:text-muted-foreground/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 aria-[invalid=true]:border-destructive/60'
 
 export function TicketForm() {
   /** Set after mount: the page is prerendered, "today" must come from the browser. */
@@ -23,10 +27,14 @@ export function TicketForm() {
   const [date, setDate] = useState('')
   const [entryTime, setEntryTime] = useState('')
   const [exitTime, setExitTime] = useState('')
-  /** Null while the collaborator keeps the calculated value. */
-  const [hoursOverride, setHoursOverride] = useState<string | null>(null)
+  /** Which time field was edited last — the order alert shows under that one. */
+  const [lastTimeField, setLastTimeField] = useState<'entryTime' | 'exitTime'>('exitTime')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const uploadInputRef = useRef<HTMLInputElement>(null)
+  const { mode: cameraMode, markMissing: markCameraMissing } = useCameraMode()
+  const [webcamOpen, setWebcamOpen] = useState(false)
 
   const [errors, setErrors] = useState<TicketErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -43,19 +51,41 @@ export function TicketForm() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
-  const calculatedHours = billableHours(entryTime, exitTime)
-  const hoursValue = hoursOverride ?? (calculatedHours ? String(calculatedHours) : '')
-  const hours = Number(hoursValue)
-  const isEdited = hoursOverride !== null && calculatedHours !== null && hours !== calculatedHours
+  // Read-only: always derived from entry/exit (the server recalculates it too)
+  const hours = billableHours(entryTime, exitTime)
 
-  const amounts = useMemo(
-    () => (Number.isInteger(hours) && hours > 0 && hours <= MAX_HOURS ? breakdown(hours) : null),
-    [hours],
-  )
+  // The pickers disable out-of-order times; this covers a value loaded before the other one changed
+  const timesOutOfOrder =
+    parseTime(entryTime) !== null && parseTime(exitTime) !== null && hours === null
+  const entryTimeError =
+    errors.entryTime ??
+    (timesOutOfOrder && lastTimeField === 'entryTime' ? 'La entrada debe ser anterior a la salida.' : undefined)
+  const exitTimeError =
+    errors.exitTime ??
+    (timesOutOfOrder && lastTimeField === 'exitTime' ? 'La salida debe ser posterior a la entrada.' : undefined)
 
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function changeTime(field: 'entryTime' | 'exitTime', value: string) {
+    if (field === 'entryTime') setEntryTime(value)
+    else setExitTime(value)
+    setLastTimeField(field)
+    // Drop submit errors on both times — the live check above takes over
+    setErrors((prev) => ({ ...prev, entryTime: undefined, exitTime: undefined }))
+  }
+
+  const hasCamera = cameraMode === 'native' || cameraMode === 'webcam'
+
+  const amounts = useMemo(() => (hours ? breakdown(hours) : null), [hours])
+  const entryMinutes = parseTime(entryTime)
+  const exitMinutes = parseTime(exitTime)
+
+  function handlePhotoInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
+    // Clear the input so picking the same file again still fires onChange
+    e.target.value = ''
+    if (file) void selectPhoto(file)
+  }
+
+  async function selectPhoto(file: File) {
     setErrors((prev) => ({ ...prev, photo: undefined }))
     const compressed = await compressImage(file)
     setPhoto(compressed)
@@ -67,7 +97,7 @@ export function TicketForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const input = { email: email.trim().toLowerCase(), ticketId: ticketId.trim(), date, entryTime, exitTime, hours }
+    const input = { email: email.trim().toLowerCase(), ticketId: ticketId.trim(), date, entryTime, exitTime, hours: hours ?? 0 }
     const nextErrors = validateTicket(input, today)
     const photoError = validatePhoto(photo)
     if (photoError) nextErrors.photo = photoError
@@ -76,7 +106,6 @@ export function TicketForm() {
     if (Object.keys(nextErrors).length > 0 || !photo) return
 
     const body = new FormData(e.currentTarget)
-    body.set('hours', String(hours))
     body.set('photo', photo)
 
     setIsSubmitting(true)
@@ -102,7 +131,7 @@ export function TicketForm() {
     setDate(today)
     setEntryTime('')
     setExitTime('')
-    setHoursOverride(null)
+    setLastTimeField('exitTime')
     setPhoto(null)
     if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhotoPreview(null)
@@ -172,31 +201,28 @@ export function TicketForm() {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field id="entryTime" label="Hora de entrada" error={errors.entryTime}>
-          <Input
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 [&>*]:min-w-0">
+        <Field id="entryTime" label="Hora de entrada" error={entryTimeError}>
+          <TimePicker
             id="entryTime"
             name="entryTime"
-            type="time"
+            label="Hora de entrada"
             value={entryTime}
-            onChange={(e) => {
-              setEntryTime(e.target.value)
-              setHoursOverride(null)
-            }}
-            className={inputClass}
+            onChange={(value) => changeTime('entryTime', value)}
+            // Entry must be before exit (at least one minute)
+            max={exitMinutes !== null ? exitMinutes - 1 : undefined}
+            invalid={!!entryTimeError}
           />
         </Field>
-        <Field id="exitTime" label="Hora de salida" error={errors.exitTime}>
-          <Input
+        <Field id="exitTime" label="Hora de salida" error={exitTimeError}>
+          <TimePicker
             id="exitTime"
             name="exitTime"
-            type="time"
+            label="Hora de salida"
             value={exitTime}
-            onChange={(e) => {
-              setExitTime(e.target.value)
-              setHoursOverride(null)
-            }}
-            className={inputClass}
+            onChange={(value) => changeTime('exitTime', value)}
+            min={entryMinutes !== null ? entryMinutes + 1 : undefined}
+            invalid={!!exitTimeError}
           />
         </Field>
       </div>
@@ -204,62 +230,83 @@ export function TicketForm() {
       <Field
         id="hours"
         label="Cantidad de horas"
-        hint="Se calcula automáticamente; cada fracción cuenta como hora completa."
+        hint="Se calcula con la hora de entrada y salida; cada fracción cuenta como hora completa."
         error={errors.hours}
       >
-        <div className="flex items-center gap-2">
-          <Input
-            id="hours"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={MAX_HOURS}
-            step={1}
-            value={hoursValue}
-            onChange={(e) => setHoursOverride(e.target.value)}
-            className={inputClass}
-          />
-          {isEdited && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              title={`Volver al cálculo (${calculatedHours} h)`}
-              onClick={() => setHoursOverride(null)}
-              className="h-11 w-11 shrink-0 rounded-xl"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        {isEdited && (
-          <p className="text-xs text-amber-400">Editado manualmente — el cálculo da {calculatedHours} h.</p>
-        )}
+        <output
+          id="hours"
+          className="flex h-11 items-center rounded-xl border border-border bg-muted/30 px-4 text-base tabular-nums text-muted-foreground sm:text-sm"
+        >
+          {hours ? `${hours} ${hours === 1 ? 'hora' : 'horas'}` : '—'}
+        </output>
       </Field>
 
       <Field id="photo" label="Foto del ticket" error={errors.photo}>
-        <label
-          htmlFor="photo"
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground transition-colors hover:border-primary/60"
-        >
-          {photoPreview ? (
-            // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+        {photoPreview && (
+          <div className="flex justify-center overflow-hidden rounded-xl border border-border bg-muted/40 p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
             <img src={photoPreview} alt="Vista previa del ticket" className="max-h-56 rounded-lg object-contain" />
-          ) : (
-            <>
-              <Camera className="h-6 w-6 text-primary" />
-              <span>Toma o adjunta una foto</span>
-            </>
+          </div>
+        )}
+        <div className={cn('grid gap-3', hasCamera ? 'grid-cols-2' : 'grid-cols-1')}>
+          {hasCamera && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => (cameraMode === 'native' ? cameraInputRef.current?.click() : setWebcamOpen(true))}
+              className="h-11 min-w-0 rounded-xl px-3"
+            >
+              <Camera className="h-4 w-4 text-primary" />
+              {photoPreview ? 'Tomar otra' : 'Tomar foto'}
+            </Button>
           )}
-          {photoPreview && <span className="text-xs">Toca para cambiarla</span>}
-        </label>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => uploadInputRef.current?.click()}
+            className="h-11 min-w-0 rounded-xl px-3"
+          >
+            <ImageUp className="h-4 w-4 text-primary" />
+            {photoPreview ? 'Cambiar imagen' : 'Subir imagen'}
+          </Button>
+        </div>
+        {/* Phones and tablets: capture opens the rear camera app directly */}
+        {cameraMode === 'native' && (
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoInput}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+          />
+        )}
         <input
+          ref={uploadInputRef}
           id="photo"
           type="file"
           accept={PHOTO_TYPES.join(',')}
-          onChange={handlePhoto}
+          onChange={handlePhotoInput}
           className="sr-only"
+          tabIndex={-1}
         />
+        {/* Desktops with a webcam: live preview */}
+        {webcamOpen && (
+          <WebcamDialog
+            onCapture={(file) => {
+              setWebcamOpen(false)
+              void selectPhoto(file)
+            }}
+            onClose={() => setWebcamOpen(false)}
+            onMissing={markCameraMissing}
+            onUpload={() => {
+              setWebcamOpen(false)
+              uploadInputRef.current?.click()
+            }}
+          />
+        )}
       </Field>
 
       {amounts && (

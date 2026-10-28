@@ -42,8 +42,11 @@ export function validateTicket(input: TicketInput, today: string): TicketErrors 
     errors.exitTime = 'La salida debe ser posterior a la entrada.'
   }
 
-  if (!Number.isInteger(input.hours) || input.hours < 1 || input.hours > MAX_HOURS) {
-    errors.hours = `Ingresa un número entero entre 1 y ${MAX_HOURS}.`
+  // Hours are derived from the times — only check them once the times are valid
+  if (!errors.entryTime && !errors.exitTime) {
+    if (!Number.isInteger(input.hours) || input.hours < 1 || input.hours > MAX_HOURS) {
+      errors.hours = `Las horas deben estar entre 1 y ${MAX_HOURS}.`
+    }
   }
 
   return errors
