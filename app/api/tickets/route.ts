@@ -40,7 +40,8 @@ export async function POST(request: Request) {
     date: field('date'),
     entryTime: field('entryTime'),
     exitTime: field('exitTime'),
-    hours: Number(field('hours')),
+    // Never taken from the client: hours always come from entry/exit
+    hours: billableHours(field('entryTime'), field('exitTime')) ?? 0,
   }
   const photo = form.get('photo')
   const file = photo instanceof File ? photo : null
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     await appendTicket(config, {
       ...input,
       submittedAt,
-      calculatedHours: billableHours(input.entryTime, input.exitTime)!,
+      calculatedHours: input.hours,
       rate: cents(HOURLY_RATE_CENTS),
       subtotal: cents(subtotalCents),
       iva: cents(ivaCents),

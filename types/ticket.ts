@@ -8,14 +8,14 @@ export interface TicketInput {
   entryTime: string
   /** HH:MM */
   exitTime: string
-  /** Hours the collaborator confirmed (pre-filled with the calculated value, editable). */
+  /** Billable hours from entry/exit (computed on the server, not editable). */
   hours: number
 }
 
 /** One row of the Google Sheet, as read back by the dashboard. */
 export interface TicketRecord extends TicketInput {
   submittedAt: string
-  /** Hours derived from entry/exit; differs from `hours` when the collaborator edited it. */
+  /** Hours derived from entry/exit. Rows saved before hours became read-only may differ from `hours`. */
   calculatedHours: number
   rate: number
   subtotal: number

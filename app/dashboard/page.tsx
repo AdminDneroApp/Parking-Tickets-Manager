@@ -92,7 +92,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <section className="grid gap-4 md:grid-cols-[1.4fr_1fr_1fr]">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Total a reembolsar</p>
-          <p className="mt-1 text-5xl font-semibold tabular-nums">{formatMoney(summary.total)}</p>
+          <p className="mt-1 text-4xl font-semibold tabular-nums sm:text-5xl">{formatMoney(summary.total)}</p>
           <p className="mt-2 text-sm tabular-nums text-muted-foreground">
             Sub-Total {formatMoney(summary.subtotal)} · IVA 13% {formatMoney(summary.iva)}
           </p>
