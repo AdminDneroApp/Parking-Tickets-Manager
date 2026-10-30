@@ -32,11 +32,14 @@ Production: `https://parking.dneroapp.com` (Vercel).
 
 ```
 app/page.tsx                 form (static)
+app/manifest.ts              PWA Web App Manifest (/manifest.webmanifest)
 app/api/tickets/route.ts     POST: validate → Drive upload → Sheet append
 app/dashboard/page.tsx       admin dashboard (server component, reads the Sheet)
 app/login/page.tsx           Google sign-in
 auth.ts / proxy.ts           allowlist (DASHBOARD_ADMINS) on /dashboard
+public/sw.js                 app-shell Service Worker
 features/ticket-form/        form + client-side photo compression
+features/pwa/                SW registration, offline detection, mobile install banner
 features/dashboard/          aggregation + HTML/CSS charts
 shared/lib/                  google, pricing, validation, dates (America/El_Salvador), admins
 ```

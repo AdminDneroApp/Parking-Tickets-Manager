@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Camera, CheckCircle2, ImageUp, Loader2 } from 'lucide-react'
+import { Camera, CheckCircle2, ImageUp, Loader2, WifiOff } from 'lucide-react'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Field } from '@/shared/ui/Field'
@@ -9,6 +9,8 @@ import { cn } from '@/shared/lib/utils'
 import { HOURLY_RATE_CENTS, billableHours, breakdown, formatUsd, parseTime } from '@/shared/lib/pricing'
 import { todayIso } from '@/shared/lib/dates'
 import { type TicketErrors, PHOTO_TYPES, validatePhoto, validateTicket } from '@/shared/lib/validation'
+import { InstallPrompt } from '@/features/pwa/InstallPrompt'
+import { useIsOffline, useServiceWorker } from '@/features/pwa/use-pwa'
 import { compressImage } from './compress-image'
 import { TimePicker } from './TimePicker'
 import { WebcamDialog, useCameraMode } from './WebcamCapture'
@@ -20,6 +22,9 @@ const inputClass =
   'h-11 min-w-0 rounded-xl bg-muted/60 px-4 text-base sm:text-sm placeholder:text-muted-foreground/60 focus-visible:border-primary/60 focus-visible:ring-primary/20 aria-[invalid=true]:border-destructive/60'
 
 export function TicketForm() {
+  useServiceWorker()
+  const isOffline = useIsOffline()
+
   /** Set after mount: the page is prerendered, "today" must come from the browser. */
   const [today, setToday] = useState('')
   const [email, setEmail] = useState('')
@@ -153,6 +158,9 @@ export function TicketForm() {
         <Button onClick={reset} className="h-11 w-full rounded-xl">
           Registrar otro ticket
         </Button>
+        <div className="w-full pt-2">
+          <InstallPrompt />
+        </div>
       </div>
     )
   }
@@ -161,6 +169,18 @@ export function TicketForm() {
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
       {/* Honeypot — hidden from people, bots fill it */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
+
+      {isOffline && (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-200"
+        >
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+          <span>
+            Sin conexión a internet. Puedes llenar los datos y tomar la foto del ticket; el botón de envío se activará al recuperar la señal.
+          </span>
+        </div>
+      )}
 
       <Field id="email" label="Correo del colaborador" error={errors.email}>
         <Input
@@ -332,10 +352,13 @@ export function TicketForm() {
         </div>
       )}
 
-      <Button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-xl font-bold">
+      <Button type="submit" disabled={isSubmitting || isOffline} className="h-11 w-full rounded-xl font-bold">
         {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isSubmitting ? 'Enviando…' : 'Registrar ticket'}
+        {!isSubmitting && isOffline && <WifiOff className="h-4 w-4" />}
+        {isSubmitting ? 'Enviando…' : isOffline ? 'Sin conexión para enviar' : 'Registrar ticket'}
       </Button>
+
+      <InstallPrompt />
     </form>
   )
 }
