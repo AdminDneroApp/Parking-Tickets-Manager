@@ -1,7 +1,15 @@
 import Image from 'next/image'
 
 /** Centered glass card with the DNERO background — used by the form and login pages. */
-export function PageShell({ subtitle, children }: { subtitle: string; children: React.ReactNode }) {
+export function PageShell({
+  subtitle,
+  footerAction,
+  children,
+}: {
+  subtitle: string
+  footerAction?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
     <main className="relative flex min-h-[var(--app-vh)] flex-col items-center justify-center overflow-hidden px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))]">
       <div className="pointer-events-none fixed inset-0 bg-grid opacity-40" />
@@ -22,9 +30,10 @@ export function PageShell({ subtitle, children }: { subtitle: string; children: 
         </div>
       </div>
 
-      <p className="relative mt-8 text-sm text-muted-foreground/40">
-        DNERO · Uso interno · {new Date().getFullYear()}
-      </p>
+      <div className="relative mt-8 flex flex-col items-center gap-2.5 text-sm text-muted-foreground/40">
+        <p>DNERO · Uso interno · {new Date().getFullYear()}</p>
+        {footerAction}
+      </div>
     </main>
   )
 }
