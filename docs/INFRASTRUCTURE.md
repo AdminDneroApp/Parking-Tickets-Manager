@@ -8,13 +8,16 @@ dependencies, deployment settings, or environment variables.
 | Route | Access | Purpose |
 |---|---|---|
 | `/` | Public | Ticket form (static page) |
+| `/manifest.webmanifest` | Public | Web App Manifest generated from `app/manifest.ts` |
+| `/sw.js` | Public | App-shell Service Worker (`no-cache` headers in `next.config.ts`) |
 | `POST /api/tickets` | Public | Validates, uploads the photo to Drive, appends a row to the Sheet |
 | `/login` | Public | Google sign-in for the dashboard |
 | `/dashboard?mes=YYYY-MM` | `DASHBOARD_ADMINS` only | KPIs, totals per day and per collaborator, records table |
 | `/api/auth/*` | next-auth | OAuth callbacks |
 
 `proxy.ts` matches `/dashboard/:path*` only; the `authorized` callback in `auth.ts`
-checks the allowlist on every request.
+checks the allowlist on every request. `/sw.js` only caches the public `/` app shell and
+static assets; `/api/*`, `/dashboard*`, and `/login*` always bypass the service worker.
 
 ## Google setup
 

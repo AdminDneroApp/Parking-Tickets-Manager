@@ -1,4 +1,5 @@
-import { AlertTriangle, ExternalLink, LogOut } from 'lucide-react'
+import Link from 'next/link'
+import { AlertTriangle, ArrowLeft, ExternalLink, LogOut } from 'lucide-react'
 import { auth, signOut } from '@/auth'
 import { getGoogleConfig, readTickets } from '@/shared/lib/google'
 import { todayIso } from '@/shared/lib/dates'
@@ -44,6 +45,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span className="hidden sm:inline">{session?.user?.email}</span>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">
+              <ArrowLeft className="h-3.5 w-3.5" /> Formulario
+            </Link>
+          </Button>
           <form
             action={async () => {
               'use server'

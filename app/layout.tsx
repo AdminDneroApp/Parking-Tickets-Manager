@@ -14,6 +14,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: 'DNERO — Tickets de parqueo',
   description: 'Registro interno de tickets de parqueo de colaboradores DNERO.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Parqueo DNERO',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
 }
 
