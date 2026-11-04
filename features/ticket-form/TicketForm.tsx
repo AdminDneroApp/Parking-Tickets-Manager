@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, CheckCircle2, ImageUp, Loader2, WifiOff } from 'lucide-react'
+import { CurrencyInput } from 'react-currency-mask'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Field } from '@/shared/ui/Field'
 import { cn } from '@/shared/lib/utils'
-import { HOURLY_RATE_CENTS, billableHours, breakdown, formatUsd, parseTime } from '@/shared/lib/pricing'
+import { MAX_TOTAL_CENTS, billableHours, breakdown, formatUsd, parseTime, toCents } from '@/shared/lib/pricing'
 import { todayIso } from '@/shared/lib/dates'
 import { type TicketErrors, PHOTO_TYPES, validatePhoto, validateTicket } from '@/shared/lib/validation'
 import { InstallPrompt } from '@/features/pwa/InstallPrompt'
@@ -34,6 +35,8 @@ export function TicketForm() {
   const [exitTime, setExitTime] = useState('')
   /** Which time field was edited last — the order alert shows under that one. */
   const [lastTimeField, setLastTimeField] = useState<'entryTime' | 'exitTime'>('exitTime')
+  /** Total printed on the ticket, in cents — typed by the collaborator (the ticket is the source of truth). */
+  const [totalCents, setTotalCents] = useState(0)
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -56,12 +59,9 @@ export function TicketForm() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
-  // Read-only: always derived from entry/exit (the server recalculates it too)
-  const hours = billableHours(entryTime, exitTime)
-
   // The pickers disable out-of-order times; this covers a value loaded before the other one changed
   const timesOutOfOrder =
-    parseTime(entryTime) !== null && parseTime(exitTime) !== null && hours === null
+    parseTime(entryTime) !== null && parseTime(exitTime) !== null && billableHours(entryTime, exitTime) === null
   const entryTimeError =
     errors.entryTime ??
     (timesOutOfOrder && lastTimeField === 'entryTime' ? 'La entrada debe ser anterior a la salida.' : undefined)
@@ -79,7 +79,7 @@ export function TicketForm() {
 
   const hasCamera = cameraMode === 'native' || cameraMode === 'webcam'
 
-  const amounts = useMemo(() => (hours ? breakdown(hours) : null), [hours])
+  const amounts = useMemo(() => (totalCents > 0 ? breakdown(totalCents) : null), [totalCents])
   const entryMinutes = parseTime(entryTime)
   const exitMinutes = parseTime(exitTime)
 
@@ -102,7 +102,7 @@ export function TicketForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    const input = { email: email.trim().toLowerCase(), ticketId: ticketId.trim(), date, entryTime, exitTime, hours: hours ?? 0 }
+    const input = { email: email.trim().toLowerCase(), ticketId: ticketId.trim(), date, entryTime, exitTime, totalCents }
     const nextErrors = validateTicket(input, today)
     const photoError = validatePhoto(photo)
     if (photoError) nextErrors.photo = photoError
@@ -111,6 +111,7 @@ export function TicketForm() {
     if (Object.keys(nextErrors).length > 0 || !photo) return
 
     const body = new FormData(e.currentTarget)
+    body.set('totalCents', String(totalCents))
     body.set('photo', photo)
 
     setIsSubmitting(true)
@@ -137,6 +138,7 @@ export function TicketForm() {
     setEntryTime('')
     setExitTime('')
     setLastTimeField('exitTime')
+    setTotalCents(0)
     setPhoto(null)
     if (photoPreview) URL.revokeObjectURL(photoPreview)
     setPhotoPreview(null)
@@ -152,7 +154,7 @@ export function TicketForm() {
         <div>
           <h2 className="text-xl font-bold">Ticket registrado</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {ticketId.toUpperCase()} · {hours} h · {amounts && formatUsd(amounts.totalCents)}
+            {ticketId.toUpperCase()} · {formatUsd(totalCents)}
           </p>
         </div>
         <Button onClick={reset} className="h-11 w-full rounded-xl">
@@ -248,17 +250,27 @@ export function TicketForm() {
       </div>
 
       <Field
-        id="hours"
-        label="Cantidad de horas"
-        hint="Se calcula con la hora de entrada y salida; cada fracción cuenta como hora completa."
-        error={errors.hours}
+        id="total"
+        label="Total cobrado"
+        hint="Escribe el total impreso en el ticket (IVA incluido)."
+        error={errors.totalCents}
       >
-        <output
-          id="hours"
-          className="flex h-11 items-center rounded-xl border border-border bg-muted/30 px-4 text-base tabular-nums text-muted-foreground sm:text-sm"
-        >
-          {hours ? `${hours} ${hours === 1 ? 'hora' : 'horas'}` : '—'}
-        </output>
+        <CurrencyInput
+          id="total"
+          currency="USD"
+          locale="en-US"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="$0.00"
+          max={MAX_TOTAL_CENTS / 100}
+          value={totalCents / 100}
+          aria-invalid={!!errors.totalCents}
+          onChangeValue={(_, value) => {
+            setTotalCents(toCents(Number(value) || 0))
+            setErrors((prev) => ({ ...prev, totalCents: undefined }))
+          }}
+          InputElement={<Input className={cn(inputClass, 'tabular-nums')} />}
+        />
       </Field>
 
       <Field id="photo" label="Foto del ticket" error={errors.photo}>
@@ -340,7 +352,7 @@ export function TicketForm() {
             <span className="tabular-nums">{formatUsd(amounts.ivaCents)}</span>
           </div>
           <div className="mt-1 flex justify-between border-t border-primary/15 pt-1 font-bold">
-            <span>Total ({hours} h × {formatUsd(HOURLY_RATE_CENTS)})</span>
+            <span>Total</span>
             <span className="tabular-nums">{formatUsd(amounts.totalCents)}</span>
           </div>
         </div>

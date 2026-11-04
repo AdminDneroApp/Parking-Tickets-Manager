@@ -8,15 +8,17 @@ export interface TicketInput {
   entryTime: string
   /** HH:MM */
   exitTime: string
-  /** Billable hours from entry/exit (computed on the server, not editable). */
-  hours: number
+  /** Total printed on the ticket, in cents (IVA included). The ticket is the source of truth. */
+  totalCents: number
 }
 
 /** One row of the Google Sheet, as read back by the dashboard. */
-export interface TicketRecord extends TicketInput {
+export interface TicketRecord extends Omit<TicketInput, 'totalCents'> {
   submittedAt: string
-  /** Hours derived from entry/exit. Rows saved before hours became read-only may differ from `hours`. */
+  /** Hours derived from entry/exit (every started hour counts). Reference only — may differ from `hours`. */
   calculatedHours: number
+  /** Hours charged on the ticket, derived from its total. Older rows: hours entered/calculated at the time. */
+  hours: number
   rate: number
   subtotal: number
   iva: number

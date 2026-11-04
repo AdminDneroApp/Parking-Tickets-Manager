@@ -3,7 +3,7 @@
  * (the source of truth — the form is public, never trust the client).
  */
 import type { TicketInput } from '@/types/ticket'
-import { MAX_HOURS, billableHours, parseTime } from './pricing'
+import { MAX_TOTAL_CENTS, billableHours, formatUsd, parseTime } from './pricing'
 
 export const COMPANY_DOMAIN = 'dneroapp.com'
 
@@ -42,11 +42,10 @@ export function validateTicket(input: TicketInput, today: string): TicketErrors 
     errors.exitTime = 'La salida debe ser posterior a la entrada.'
   }
 
-  // Hours are derived from the times — only check them once the times are valid
-  if (!errors.entryTime && !errors.exitTime) {
-    if (!Number.isInteger(input.hours) || input.hours < 1 || input.hours > MAX_HOURS) {
-      errors.hours = `Las horas deben estar entre 1 y ${MAX_HOURS}.`
-    }
+  if (!Number.isInteger(input.totalCents) || input.totalCents <= 0) {
+    errors.totalCents = 'Ingresa el total cobrado en el ticket.'
+  } else if (input.totalCents > MAX_TOTAL_CENTS) {
+    errors.totalCents = `El total no puede ser mayor a ${formatUsd(MAX_TOTAL_CENTS)}.`
   }
 
   return errors

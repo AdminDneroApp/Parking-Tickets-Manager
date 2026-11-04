@@ -34,10 +34,11 @@ static assets; `/api/*`, `/dashboard*`, and `/login*` always bypass the service 
    |---|---|---|---|---|---|---|---|---|---|---|---|---|
    | Registrado | Correo | ID Ticket | Fecha | Hora entrada | Hora salida | Horas calculadas | Horas | Tarifa | Sub-Total | IVA | Total | Foto |
 
-   - *Horas calculadas* comes from entry/exit (fractions round up). *Horas* is what
-     gets billed. Hours are no longer editable in the form and the API computes them from
-     the times, so new rows have G = H; older rows edited by hand can differ and the
-     dashboard still flags them.
+   - *Total* is typed by the collaborator from the printed ticket (the ticket is the
+     source of truth); *Sub-Total* and *IVA* are backed out of it. *Horas* is derived
+     from the total (÷ *Tarifa*). *Horas calculadas* comes from entry/exit (fractions
+     round up) and is reference only — the parking machine applies a grace period we
+     can't see in HH:MM times, so G and H can differ and the dashboard flags it.
    - Values are written with `valueInputOption=RAW` (no formula injection). Format
      columns J–L as currency in the Sheet if you like; the app reads unformatted values.
    - Do not reorder columns: `shared/lib/google.ts` reads and writes by position.

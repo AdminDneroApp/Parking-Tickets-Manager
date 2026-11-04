@@ -107,7 +107,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <Stat label="Tickets" value={summary.tickets} />
           <Stat label="Horas" value={summary.hours} />
           <Stat label="Colaboradores" value={summary.byCollaborator.length} />
-          <Stat label="Horas editadas" value={summary.editedHours} hint="Tickets donde las horas difieren del cálculo" />
+          <Stat label="Horas distintas" value={summary.editedHours} hint="Tickets donde las horas cobradas difieren del cálculo por horario" />
         </div>
       </section>
 
@@ -155,9 +155,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     <td className="px-4 py-2 tabular-nums">{r.exitTime}</td>
                     <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">
                       {edited && (
-                        <span title={`Editado — el cálculo da ${r.calculatedHours} h`} className="mr-1 inline-flex items-center gap-1 text-xs text-amber-400">
+                        <span title={`Según el horario serían ${r.calculatedHours} h`} className="mr-1 inline-flex items-center gap-1 text-xs text-amber-400">
                           <AlertTriangle className="h-3 w-3" />
-                          <span className="sr-only">Editado</span>
+                          <span className="sr-only">Difiere del horario</span>
                         </span>
                       )}
                       {r.hours}

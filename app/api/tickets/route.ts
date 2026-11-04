@@ -5,7 +5,7 @@
 import { NextResponse } from 'next/server'
 import type { TicketInput } from '@/types/ticket'
 import { appendTicket, getGoogleConfig, uploadPhoto } from '@/shared/lib/google'
-import { HOURLY_RATE_CENTS, billableHours, breakdown, cents } from '@/shared/lib/pricing'
+import { HOURLY_RATE_CENTS, billableHours, breakdown, cents, hoursFromTotal } from '@/shared/lib/pricing'
 import { timestamp, todayIso } from '@/shared/lib/dates'
 import { validatePhoto, validateTicket } from '@/shared/lib/validation'
 
@@ -34,14 +34,15 @@ export async function POST(request: Request) {
   if (form.get('website')) return NextResponse.json({ ok: true })
 
   const field = (name: string) => String(form.get(name) ?? '').trim()
+  const rawTotal = field('totalCents')
   const input: TicketInput = {
     email: field('email').toLowerCase(),
     ticketId: field('ticketId').toUpperCase(),
     date: field('date'),
     entryTime: field('entryTime'),
     exitTime: field('exitTime'),
-    // Never taken from the client: hours always come from entry/exit
-    hours: billableHours(field('entryTime'), field('exitTime')) ?? 0,
+    // Integer cents typed from the printed ticket — the ticket is the source of truth
+    totalCents: /^\d{1,7}$/.test(rawTotal) ? Number(rawTotal) : NaN,
   }
   const photo = form.get('photo')
   const file = photo instanceof File ? photo : null
@@ -61,11 +62,14 @@ export async function POST(request: Request) {
       data: await file.arrayBuffer(),
     })
 
-    const { subtotalCents, ivaCents, totalCents } = breakdown(input.hours)
+    const { totalCents, ...record } = input
+    const { subtotalCents, ivaCents } = breakdown(totalCents)
     await appendTicket(config, {
-      ...input,
+      ...record,
       submittedAt,
-      calculatedHours: input.hours,
+      // Reference only: what entry/exit would give. The machine's grace rules can make it differ.
+      calculatedHours: billableHours(input.entryTime, input.exitTime) ?? 0,
+      hours: hoursFromTotal(totalCents),
       rate: cents(HOURLY_RATE_CENTS),
       subtotal: cents(subtotalCents),
       iva: cents(ivaCents),
