@@ -3,7 +3,7 @@
 Registro de tickets de parqueo de colaboradores DNERO ($1.50 por hora o fracción, IVA incluido).
 
 - `/` — formulario público: correo @dneroapp.com, ID de ticket, fecha, entrada/salida,
-  horas (calculadas, editables) y foto del ticket.
+  total cobrado (tal como aparece en el ticket) y foto del ticket.
 - `/dashboard` — totales por mes, por día y por colaborador. Solo cuentas en `DASHBOARD_ADMINS`.
 
 Los datos se guardan en un Google Sheet y las fotos en una carpeta de una Unidad Compartida.

@@ -1,7 +1,9 @@
 /**
- * Parking pricing. The hourly rate already includes IVA; the accounting
+ * Parking pricing. The total is typed in from the printed ticket (the ticket
+ * is the source of truth — the parking machine applies grace rules we can't
+ * reproduce from HH:MM times). IVA is already included; the accounting
  * breakdown backs the tax out of the total. All math runs in cents so the
- * split always adds up (e.g. 9 h → 1350 = 1195 + 155).
+ * split always adds up (e.g. 1350 = 1195 + 155).
  */
 
 import { formatMoney } from './format'
@@ -11,6 +13,8 @@ export const HOURLY_RATE_CENTS = 150
 export const IVA_RATE = 0.13
 
 export const MAX_HOURS = 24
+/** Upper bound for a typed total — catches typos like an extra zero. */
+export const MAX_TOTAL_CENTS = MAX_HOURS * HOURLY_RATE_CENTS
 
 export interface Breakdown {
   totalCents: number
@@ -18,11 +22,18 @@ export interface Breakdown {
   ivaCents: number
 }
 
-export function breakdown(hours: number): Breakdown {
-  const totalCents = hours * HOURLY_RATE_CENTS
+export function breakdown(totalCents: number): Breakdown {
   const subtotalCents = Math.round(totalCents / (1 + IVA_RATE))
   return { totalCents, subtotalCents, ivaCents: totalCents - subtotalCents }
 }
+
+/** Hours the ticket charged, derived from its total (at least 1). */
+export function hoursFromTotal(totalCents: number): number {
+  return Math.max(1, Math.round(totalCents / HOURLY_RATE_CENTS))
+}
+
+/** Dollars (as typed in the masked input) → integer cents. */
+export const toCents = (value: number) => Math.round(value * 100)
 
 /** "HH:MM" → minutes since midnight, or null if malformed. */
 export function parseTime(value: string): number | null {
