@@ -12,7 +12,7 @@ import { formatMoney } from './format'
 export const HOURLY_RATE_CENTS = 150
 export const IVA_RATE = 0.13
 
-export const MAX_HOURS = 24
+export const MAX_HOURS = 48
 /** Upper bound for a typed total — catches typos like an extra zero. */
 export const MAX_TOTAL_CENTS = MAX_HOURS * HOURLY_RATE_CENTS
 
