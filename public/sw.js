@@ -35,10 +35,11 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
-  // Never intercept API routes, OAuth, admin dashboard, login, or dev HMR
+  // Never intercept API routes, OAuth, dashboards (private data), logins, or dev HMR
   if (
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/dashboard') ||
+    url.pathname.startsWith('/mis-tickets') ||
     url.pathname.startsWith('/login') ||
     url.pathname.startsWith('/_next/webpack-hmr')
   ) {

@@ -1,7 +1,7 @@
 import Link from 'next/link'
-import { ArrowLeft, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, Ticket } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import { auth, signIn } from '@/auth'
+import { auth, signIn, signOut } from '@/auth'
 import { isDashboardAdmin } from '@/shared/lib/admins'
 import { Button } from '@/shared/ui/Button'
 import { PageShell } from '@/shared/ui/PageShell'
@@ -9,7 +9,8 @@ import { PageShell } from '@/shared/ui/PageShell'
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams
   const session = await auth()
-  if (isDashboardAdmin(session?.user?.email)) redirect('/dashboard')
+  const email = session?.user?.email
+  if (isDashboardAdmin(email)) redirect('/dashboard')
 
   return (
     <PageShell
@@ -30,24 +31,51 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <span>Acceso restringido a administradores con cuenta @dneroapp.com.</span>
         </div>
 
-        {error && (
+        {/* Signed in as a collaborator who isn't in DASHBOARD_ADMINS */}
+        {email ? (
           <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error === 'AccessDenied'
-              ? 'Tu cuenta no tiene acceso al dashboard.'
-              : 'No se pudo iniciar sesión. Intenta de nuevo.'}
+            {email} no tiene acceso al dashboard.
           </div>
+        ) : (
+          error && (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error === 'AccessDenied'
+                ? 'Usa tu cuenta @dneroapp.com para iniciar sesión.'
+                : 'No se pudo iniciar sesión. Intenta de nuevo.'}
+            </div>
+          )
         )}
 
-        <form
-          action={async () => {
-            'use server'
-            await signIn('google', { redirectTo: '/dashboard' })
-          }}
-        >
-          <Button type="submit" className="h-11 w-full rounded-xl font-bold">
-            Continuar con Google
-          </Button>
-        </form>
+        {email ? (
+          <div className="space-y-3">
+            <Button asChild className="h-11 w-full rounded-xl font-bold">
+              <Link href="/mis-tickets">
+                <Ticket className="h-4 w-4" /> Ver mis tickets
+              </Link>
+            </Button>
+            <form
+              action={async () => {
+                'use server'
+                await signOut({ redirectTo: '/login' })
+              }}
+            >
+              <Button type="submit" variant="outline" className="h-11 w-full rounded-xl">
+                Usar otra cuenta
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <form
+            action={async () => {
+              'use server'
+              await signIn('google', { redirectTo: '/dashboard' })
+            }}
+          >
+            <Button type="submit" className="h-11 w-full rounded-xl font-bold">
+              Continuar con Google
+            </Button>
+          </form>
+        )}
       </div>
     </PageShell>
   )
