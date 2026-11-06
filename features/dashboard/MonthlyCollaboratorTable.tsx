@@ -35,11 +35,14 @@ export function MonthlyCollaboratorTable({
   records,
   monthHours,
   monthTotal,
+  personal = false,
 }: {
   weeks: CollaboratorWeek[]
   records: TicketRecord[]
   monthHours: number
   monthTotal: number
+  /** Collaborator's own view (/mis-tickets): a single row, no name or copy columns. */
+  personal?: boolean
 }) {
   const [selectedWeek, setSelectedWeek] = useState(0)
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
@@ -89,14 +92,17 @@ export function MonthlyCollaboratorTable({
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-5">
         <div>
-          <h2 className="text-sm font-semibold">Resumen semanal por colaborador</h2>
+          <h2 className="text-sm font-semibold">{personal ? 'Resumen semanal' : 'Resumen semanal por colaborador'}</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Semana de {formatShortDate(week.dates[0])} a {formatShortDate(week.dates[5])}. Los horarios y totales se copian en formato tabulado para Google Sheets.
+            Semana de {formatShortDate(week.dates[0])} a {formatShortDate(week.dates[5])}.
+            {!personal && ' Los horarios y totales se copian en formato tabulado para Google Sheets.'}
           </p>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {collaborators.length} {collaborators.length === 1 ? 'colaborador' : 'colaboradores'}
-        </span>
+        {!personal && (
+          <span className="text-xs text-muted-foreground">
+            {collaborators.length} {collaborators.length === 1 ? 'colaborador' : 'colaboradores'}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-4 px-5 pt-4">
@@ -148,7 +154,7 @@ export function MonthlyCollaboratorTable({
         <table className="w-full min-w-max text-sm">
           <thead className="text-left text-xs text-muted-foreground">
             <tr className="border-y border-border">
-              <th className="sticky left-0 z-10 bg-card px-4 py-3 font-medium">Nombre</th>
+              {!personal && <th className="sticky left-0 z-10 bg-card px-4 py-3 font-medium">Nombre</th>}
               {week.dates.map((date) => (
                 <th key={date} className="min-w-36 px-3 py-2 text-center font-medium">
                   <span className="block capitalize">{formatWeekday(date)}</span>
@@ -156,13 +162,13 @@ export function MonthlyCollaboratorTable({
                 </th>
               ))}
               <th className="whitespace-nowrap px-4 py-3 text-right font-medium">Total semana</th>
-              <th className="sticky right-0 z-10 bg-card px-4 py-3 text-center font-medium">Copiar</th>
+              {!personal && <th className="sticky right-0 z-10 bg-card px-4 py-3 text-center font-medium">Copiar</th>}
             </tr>
           </thead>
           <tbody>
             {collaborators.length === 0 ? (
               <tr>
-                <td colSpan={week.dates.length + 3} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={week.dates.length + (personal ? 1 : 3)} className="px-4 py-8 text-center text-muted-foreground">
                   Sin registros esta semana.
                 </td>
               </tr>
@@ -170,9 +176,11 @@ export function MonthlyCollaboratorTable({
               collaborators.map((row) => {
                 return (
                   <tr key={row.email} className="border-b border-border/60 last:border-0 hover:bg-accent/30">
-                  <th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-card px-4 py-3 text-left font-medium">
-                    {row.name}
-                  </th>
+                  {!personal && (
+                    <th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-card px-4 py-3 text-left font-medium">
+                      {row.name}
+                    </th>
+                  )}
                   {week.dates.map((date) => {
                     const tickets = row.ticketsByDate[date] ?? []
                     return (
@@ -194,6 +202,7 @@ export function MonthlyCollaboratorTable({
                   <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">
                     {row.hours} horas ({formatMoney(row.total)})
                   </td>
+                  {!personal && (
                   <td className="sticky right-0 z-10 bg-card px-4 py-2 text-center">
                     <Button
                       type="button"
@@ -206,6 +215,7 @@ export function MonthlyCollaboratorTable({
                       {copiedEmail === row.email ? 'Copiado' : 'Copiar'}
                     </Button>
                   </td>
+                  )}
                   </tr>
                 )
               })

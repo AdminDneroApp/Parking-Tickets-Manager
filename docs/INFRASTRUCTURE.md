@@ -11,13 +11,19 @@ dependencies, deployment settings, or environment variables.
 | `/manifest.webmanifest` | Public | Web App Manifest generated from `app/manifest.ts` |
 | `/sw.js` | Public | App-shell Service Worker (`no-cache` headers in `next.config.ts`) |
 | `POST /api/tickets` | Public | Validates, uploads the photo to Drive, appends a row to the Sheet |
-| `/login` | Public | Google sign-in for the dashboard |
+| `/login` | Public | Google sign-in for the admin dashboard |
 | `/dashboard?mes=YYYY-MM` | `DASHBOARD_ADMINS` only | KPIs, totals per day and per collaborator, records table |
+| `/mis-tickets/login` | Public | Google sign-in for collaborators (linked from the form footer) |
+| `/mis-tickets?mes=YYYY-MM` | Any `@dneroapp.com` account | The signed-in collaborator's own tickets: weekly table + records |
 | `/api/auth/*` | next-auth | OAuth callbacks |
 
-`proxy.ts` matches `/dashboard/:path*` only; the `authorized` callback in `auth.ts`
-checks the allowlist on every request. `/sw.js` only caches the public `/` app shell and
-static assets; `/api/*`, `/dashboard*`, and `/login*` always bypass the service worker.
+`proxy.ts` matches `/dashboard/:path*` and `/mis-tickets` (not its `/login`); the
+`authorized` callback in `auth.ts` checks access on every request — the allowlist for
+`/dashboard` (otherwise → `/login`), a company account for `/mis-tickets` (otherwise →
+`/mis-tickets/login`). `/mis-tickets` filters the Sheet by the **session** email on the
+server; there is no read API and no email parameter. `/sw.js` only caches the public `/`
+app shell and static assets; `/api/*`, `/dashboard*`, `/mis-tickets*` and `/login*` always
+bypass the service worker.
 
 ## Google setup
 
@@ -27,7 +33,8 @@ static assets; `/api/*`, `/dashboard*`, and `/login*` always bypass the service 
 2. **Shared Drive**: the Sheet and the photos folder both live in one master Shared
    Drive. Add the service account as a member of that Shared Drive with the
    **Content manager** role; that covers both (no per-file sharing needed).
-   Dashboard admins need at least view access to open the photo links.
+   Dashboard admins need at least view access to open the photo links (`/mis-tickets`
+   doesn't show photos).
 3. **Sheet**: tab name = `GOOGLE_SHEET_TAB` (default `Tickets`). Row 1 headers, columns A–M:
 
    | A | B | C | D | E | F | G | H | I | J | K | L | M |
@@ -45,7 +52,7 @@ static assets; `/api/*`, `/dashboard*`, and `/login*` always bypass the service 
 4. **Photos folder**: service accounts have no storage quota in My Drive, so the folder
    must stay inside the Shared Drive (moving it to someone's My Drive breaks uploads).
 
-### OAuth client (dashboard login)
+### OAuth client (dashboard and collaborator login)
 
 GCP → APIs & Services → Credentials → OAuth client ID (Web application). The OAuth
 consent screen should be **Internal** (Workspace users only).
@@ -57,8 +64,9 @@ Authorized redirect URIs:
 
 Authorized JavaScript origins: `http://localhost:3000`, `https://parking.dneroapp.com`.
 
-Sign-in requires a verified `@dneroapp.com` account (`hd` claim) **and** membership in
-`DASHBOARD_ADMINS`.
+Sign-in requires a verified `@dneroapp.com` account (`hd` claim). That is enough for
+`/mis-tickets`; `/dashboard` additionally requires membership in `DASHBOARD_ADMINS`
+(a signed-in non-admin sees "no access" on `/login`, with a link to their tickets).
 
 ## Environment variables
 

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Camera, CheckCircle2, ImageUp, Loader2, WifiOff } from 'lucide-react'
+import Link from 'next/link'
+import { Camera, CheckCircle2, ImageUp, Loader2, Ticket, WifiOff } from 'lucide-react'
 import { CurrencyInput } from 'react-currency-mask'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
@@ -368,6 +369,13 @@ export function TicketForm() {
         {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
         {!isSubmitting && isOffline && <WifiOff className="h-4 w-4" />}
         {isSubmitting ? 'Enviando…' : isOffline ? 'Sin conexión para enviar' : 'Registrar ticket'}
+      </Button>
+
+      <Button asChild variant="outline" className="h-11 w-full rounded-xl">
+        <Link href="/mis-tickets" prefetch={false}>
+          <Ticket className="h-4 w-4" />
+          Ver mis tickets
+        </Link>
       </Button>
 
       <InstallPrompt />
