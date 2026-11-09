@@ -1,14 +1,15 @@
 import Link from 'next/link'
-import { AlertTriangle, ArrowLeft, ExternalLink, LogOut } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, LogOut } from 'lucide-react'
 import { auth, signOut } from '@/auth'
 import { getGoogleConfig, readTickets } from '@/shared/lib/google'
 import { todayIso } from '@/shared/lib/dates'
 import { Button } from '@/shared/ui/Button'
-import { cn } from '@/shared/lib/utils'
 import { summarize, weeksInMonth } from '@/features/dashboard/summary'
 import { CollaboratorBars, DailyColumns } from '@/features/dashboard/charts'
 import { MonthlyCollaboratorTable } from '@/features/dashboard/MonthlyCollaboratorTable'
-import { formatDate, formatMoney, formatMonth, formatNumber } from '@/shared/lib/format'
+import { MonthPicker } from '@/features/dashboard/MonthPicker'
+import { RecordsTable } from '@/features/dashboard/RecordsTable'
+import { formatMoney, formatMonth, formatNumber } from '@/shared/lib/format'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,25 +64,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </header>
 
-      <form action="/dashboard" method="get" className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <label htmlFor="mes" className="block text-xs font-medium text-muted-foreground">
-            Mes y año
-          </label>
-          <input
-            id="mes"
-            name="mes"
-            type="month"
-            defaultValue={month}
-            className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
-          />
-        </div>
-        <Button type="submit" variant="outline" className="h-10">
-          Ver resumen
-        </Button>
-      </form>
+      <MonthPicker month={month} />
 
       <MonthlyCollaboratorTable
+        key={month}
         weeks={weeks}
         records={records}
         monthHours={summary.hours}
@@ -122,63 +108,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </section>
 
-      {/* Table view */}
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <h2 className="px-5 pt-5 text-sm font-semibold">Registros</h2>
-        <div className="overflow-x-auto">
-          <table className="mt-3 w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr className="border-b border-border">
-                {['Fecha', 'Colaborador', 'ID Ticket', 'Entrada', 'Salida', 'Horas', 'Sub-Total', 'IVA', 'Total', 'Foto'].map((h) => (
-                  <th key={h} className={cn('px-4 py-2 font-medium', ['Horas', 'Sub-Total', 'IVA', 'Total'].includes(h) && 'text-right')}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {monthRecords.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
-                    Sin registros este mes.
-                  </td>
-                </tr>
-              )}
-              {monthRecords.map((r) => {
-                const edited = r.hours !== r.calculatedHours
-                return (
-                  <tr key={`${r.submittedAt}-${r.ticketId}`} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
-                    <td className="whitespace-nowrap px-4 py-2 tabular-nums">{formatDate(r.date)}</td>
-                    <td className="px-4 py-2">{r.email}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{r.ticketId}</td>
-                    <td className="px-4 py-2 tabular-nums">{r.entryTime}</td>
-                    <td className="px-4 py-2 tabular-nums">{r.exitTime}</td>
-                    <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">
-                      {edited && (
-                        <span title={`Según el horario serían ${r.calculatedHours} h`} className="mr-1 inline-flex items-center gap-1 text-xs text-amber-400">
-                          <AlertTriangle className="h-3 w-3" />
-                          <span className="sr-only">Difiere del horario</span>
-                        </span>
-                      )}
-                      {r.hours}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatMoney(r.subtotal)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatMoney(r.iva)}</td>
-                    <td className="px-4 py-2 text-right font-semibold tabular-nums">{formatMoney(r.total)}</td>
-                    <td className="px-4 py-2">
-                      {r.photoUrl.startsWith('https://') && (
-                        <a href={r.photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                          Ver <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <RecordsTable records={monthRecords} />
     </main>
   )
 }

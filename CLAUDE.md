@@ -1,7 +1,7 @@
 # CLAUDE.md — DNERO Parking Tickets Manager
 
 Single public form where DNERO collaborators register parking tickets, plus an
-admin-only `/dashboard`. No backend or database: the Google Sheet is the data store
+admin-only `/dashboard` and `/mis-tickets`, where any collaborator sees their own tickets. No backend or database: the Google Sheet is the data store
 and photos go to a Shared Drive folder, both through a service account.
 
 ## ⛔ Rules
@@ -19,7 +19,7 @@ and photos go to a Shared Drive folder, both through a service account.
 
 ## Stack
 
-Next.js 16 (App Router) on Vercel · next-auth v5 beta (Google provider, dashboard only) ·
+Next.js 16 (App Router) on Vercel · next-auth v5 beta (Google provider, dashboard + mis-tickets) ·
 Tailwind CSS 3 + Radix Slot + lucide-react · TypeScript strict.
 
 **Spanish only** — no `[lang]` segment, no translation files. UI copy is written
@@ -36,7 +36,8 @@ app/manifest.ts              PWA Web App Manifest (/manifest.webmanifest)
 app/api/tickets/route.ts     POST: validate → Drive upload → Sheet append
 app/dashboard/page.tsx       admin dashboard (server component, reads the Sheet)
 app/login/page.tsx           Google sign-in
-auth.ts / proxy.ts           allowlist (DASHBOARD_ADMINS) on /dashboard
+app/mis-tickets/             collaborator login + own tickets (filtered by session email)
+auth.ts / proxy.ts           allowlist (DASHBOARD_ADMINS) on /dashboard, company account on /mis-tickets
 public/sw.js                 app-shell Service Worker
 features/ticket-form/        form + client-side photo compression
 features/pwa/                SW registration, offline detection, mobile install banner
